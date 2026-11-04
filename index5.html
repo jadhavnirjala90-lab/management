@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlogPulse | Modern Blog Management App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Smooth custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- Toast Notification Center -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Navigation Header -->
+    <header class="bg-gray-800/80 backdrop-blur-md border-b border-gray-700 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-brand-600 rounded-xl text-white shadow-lg shadow-brand-500/20">
+                    <i data-lucide="newspaper" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">BlogPulse</h1>
+                    <p class="text-xs text-gray-400 hidden sm:block">Manage, Create & Publish</p>
+                </div>
+            </div>
+
+            <!-- Header Action Button -->
+            <button onclick="openCreateModal()" class="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-brand-600/30 transition-all duration-200 hover:scale-105 active:scale-95">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>New Article</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Controls Bar (Search + Category Filter + Stats) -->
+        <section class="bg-gray-800/50 border border-gray-700/60 rounded-2xl p-4 sm:p-6 backdrop-blur-sm shadow-xl space-y-6">
+            <div class="flex flex-col md:flex-row gap-4 justify-between items-center">
+                
+                <!-- Search Input -->
+                <div class="relative w-full md:w-96">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                        <i data-lucide="search" class="w-5 h-5"></i>
+                    </div>
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search by title, content, or author..." 
+                           class="w-full pl-10 pr-10 py-2.5 bg-gray-900/80 border border-gray-700 rounded-xl text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all">
+                    <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Stats summary badge -->
+                <div class="flex items-center gap-3 text-xs sm:text-sm text-gray-400 self-end md:self-center">
+                    <span id="postsCount" class="font-semibold text-brand-500">0 Posts</span>
+                    <span>•</span>
+                    <button onclick="resetToDefaultData()" class="hover:text-gray-200 underline flex items-center gap-1 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Demo Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none" id="categoryFilters">
+                <!-- Dynamically generated category buttons -->
+            </div>
+        </section>
+
+        <!-- Blog Cards Grid -->
+        <section id="blogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic blog cards populated via JS -->
+        </section>
+
+        <!-- Empty State Container -->
+        <div id="emptyState" class="hidden text-center py-16 px-4 bg-gray-800/30 rounded-2xl border border-dashed border-gray-700">
+            <div class="p-4 bg-gray-800 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center text-gray-400">
+                <i data-lucide="file-search" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-200">No blog posts found</h3>
+            <p class="text-sm text-gray-400 mt-1 max-w-md mx-auto">Try adjusting your search query, changing category filters, or create a new blog post!</p>
+            <button onclick="openCreateModal()" class="mt-5 inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all">
+                <i data-lucide="plus" class="w-4 h-4"></i> Create Article
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800/40 border-t border-gray-800 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p>© 2026 BlogPulse Platform. Built with Vanilla JS & Tailwind CSS.</p>
+            <div class="flex items-center gap-4 text-gray-400">
+                <span class="text-xs bg-gray-800 px-2.5 py-1 rounded-md border border-gray-700">Local Storage Sync Enabled</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- CREATE / EDIT BLOG MODAL -->
+    <div id="blogFormModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative transform transition-all my-8">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 border-b border-gray-700">
+                <h2 id="modalTitle" class="text-xl font-bold text-white flex items-center gap-2">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-brand-500"></i> Create New Post
+                </h2>
+                <button onclick="closeFormModal()" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-700 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="blogForm" onsubmit="handleFormSubmit(event)" class="mt-4 space-y-4">
+                <input type="hidden" id="blogId">
+
+                <!-- Title Input -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">Article Title *</label>
+                    <input type="text" id="formTitle" required placeholder="Enter compelling title..." 
+                           class="w-full px-3.5 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <!-- Category & Author Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">Category *</label>
+                        <select id="formCategory" required class="w-full px-3.5 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Technology">Technology</option>
+                            <option value="Design">Design</option>
+                            <option value="Lifestyle">Lifestyle</option>
+                            <option value="Business">Business</option>
+                            <option value="Travel">Travel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">Author Name *</label>
+                        <input type="text" id="formAuthor" required placeholder="e.g. Jane Doe" 
+                               class="w-full px-3.5 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Cover Image URL -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">Cover Image URL</label>
+                    <input type="url" id="formImageUrl" placeholder="https://images.unsplash.com/..." 
+                           class="w-full px-3.5 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <p class="text-xs text-gray-400 mt-1">Leave empty for an automatic Unsplash fallback visual.</p>
+                </div>
+
+                <!-- Excerpt Input -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">Short Excerpt *</label>
+                    <input type="text" id="formExcerpt" required placeholder="Brief summary for card previews..." 
+                           class="w-full px-3.5 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <!-- Body / Content Textarea -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">Content / Body *</label>
+                    <textarea id="formContent" required rows="6" placeholder="Write full article body content here..." 
+                              class="w-full px-3.5 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-brand-500 focus:outline-none resize-y"></textarea>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                    <button type="button" onclick="closeFormModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-xl text-sm font-medium transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition shadow-lg shadow-brand-600/30 flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Save Post
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- READ BLOG DETAIL MODAL -->
+    <div id="readModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden my-8 relative flex flex-col max-h-[90vh]">
+            <!-- Header Image Banner -->
+            <div class="relative h-64 sm:h-80 w-full overflow-hidden bg-gray-900 flex-shrink-0">
+                <img id="viewImage" src="" alt="Blog Banner" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-800 via-gray-800/40 to-transparent"></div>
+                <button onclick="closeReadModal()" class="absolute top-4 right-4 bg-gray-900/70 hover:bg-gray-900 text-white p-2 rounded-full backdrop-blur-md border border-gray-600 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+                <div class="absolute bottom-4 left-6 right-6">
+                    <span id="viewCategory" class="inline-block px-3 py-1 bg-brand-600 text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-2">
+                        Category
+                    </span>
+                    <h2 id="viewTitle" class="text-2xl sm:text-3xl font-bold text-white leading-tight">Post Title</h2>
+                </div>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="p-6 sm:p-8 overflow-y-auto space-y-6 flex-grow">
+                <!-- Author & Meta bar -->
+                <div class="flex items-center justify-between pb-4 border-b border-gray-700 text-sm text-gray-400">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-brand-700 flex items-center justify-center font-bold text-white shadow" id="viewAvatar">
+                            A
+                        </div>
+                        <div>
+                            <p class="text-white font-medium" id="viewAuthor">Author Name</p>
+                            <p class="text-xs text-gray-400" id="viewDate">Date</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs bg-gray-900/60 px-3 py-1.5 rounded-lg border border-gray-700">
+                        <i data-lucide="clock" class="w-3.5 h-3.5 text-brand-400"></i>
+                        <span id="viewReadingTime">3 min read</span>
+                    </div>
+                </div>
+
+                <!-- Article Paragraphs -->
+                <div id="viewContent" class="text-gray-300 leading-relaxed space-y-4 whitespace-pre-line text-base">
+                    <!-- Dynamic Body Content -->
+                </div>
+            </div>
+
+            <!-- View Modal Footer Actions -->
+            <div class="p-4 bg-gray-900/80 border-t border-gray-700 flex justify-between items-center flex-shrink-0">
+                <button onclick="closeReadModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-xl text-sm font-medium transition">
+                    Back to Feed
+                </button>
+                <div class="flex gap-2">
+                    <button id="viewEditBtn" class="px-4 py-2 bg-gray-700 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="edit" class="w-4 h-4"></i> Edit
+                    </button>
+                    <button id="viewDeleteBtn" class="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="p-3 bg-red-500/10 text-red-400 rounded-full w-14 h-14 mx-auto flex items-center justify-center border border-red-500/20">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-white">Delete Blog Post?</h3>
+                <p class="text-sm text-gray-400 mt-1">Are you sure you want to remove this blog post? This action cannot be undone.</p>
+            </div>
+            <div class="flex justify-center gap-3 pt-2">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-xl text-sm font-medium transition w-full">
+                    Cancel
+                </button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition w-full shadow-lg shadow-red-600/30">
+                    Confirm Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+    <script>
+        // Default Sample Posts for initialization
+        const DEFAULT_POSTS = [
+            {
+                id: "1",
+                title: "Building Modern Web Apps with Tailwind CSS & JavaScript",
+                category: "Technology",
+                author: "Alex Morgan",
+                imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
+                excerpt: "Learn how utility-first CSS and modern ES6 JavaScript enable rapid application development with sleek user interfaces.",
+                content: "Utility-first CSS frameworks like Tailwind CSS have completely transformed how modern web interfaces are designed. Rather than wrestling with huge CSS files and semantic class names that lose relevance, Tailwind allows developers to build responsive, custom layouts directly within markup.\n\nCombined with modern ES6+ JavaScript features, you can rapidly iterate and create performant web apps without heavy bundle overhead. In this post, we explore best practices for component state, modal interactions, and scalable UI design systems.",
+                date: "2026-03-28"
+            },
+            {
+                id: "2",
+                title: "10 Principles of Human-Centered UI/UX Design",
+                category: "Design",
+                author: "Sophia Lin",
+                imageUrl: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&w=800&q=80",
+                excerpt: "Key practices to build intuitive digital tools that prioritize usability, visual hierarchy, and user empathy.",
+                content: "Designing products that feel intuitive requires deep empathy for users. Digital tools should feel like extensions of thought, minimising friction and maximizing clarity.\n\nKey rules include maintaining consistent visual hierarchy, providing immediate tactile or visual feedback for user interactions, and prioritizing content over decorative clutter. Always test interface prototypes with real users early in the product lifecycle.",
+                date: "2026-03-25"
+            },
+            {
+                id: "3",
+                title: "Navigating Remote Work & Digital Nomad Lifestyle",
+                category: "Lifestyle",
+                author: "David Miller",
+                imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80",
+                excerpt: "How to maintain productivity, focus, and healthy personal boundaries while traveling and working remotely.",
+                content: "The modern workforce has shifted dramatically toward distributed teams and remote flexibility. While freedom of location is empowering, maintaining focus, work-life boundaries, and personal productivity demands intentional structure.\n\nEstablishing fixed morning routines, creating dedicated ergonomic workspaces, and using asynchronous communication tools are critical steps to prevent burnout while exploring the globe.",
+                date: "2026-03-20"
+            },
+            {
+                id: "4",
+                title: "Scaling Tech Startups in a Competitive Market",
+                category: "Business",
+                author: "Elena Rostova",
+                imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
+                excerpt: "Strategies for achieving Product-Market Fit, sustaining early user retention, and managing sustainable capital growth.",
+                content: "Early-stage startup success relies heavily on achieving true Product-Market Fit before aggressively spending capital on customer acquisition. Focus on user retention metrics over vanity signup numbers.\n\nBuilding a strong core engineering culture, staying agile in response to customer feedback, and cultivating long-term value propositions will sustain growth even during economic shifts.",
+                date: "2026-03-15"
+            }
+        ];
+
+        // Categories Configuration
+        const CATEGORIES = ["All", "Technology", "Design", "Lifestyle", "Business", "Travel"];
+
+        // Application State
+        let posts = [];
+        let activeCategory = "All";
+        let searchQuery = "";
+        let postToDeleteId = null;
+
+        // Initialize App on DOM Load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPostsFromStorage();
+            renderCategoryFilters();
+            renderPosts();
+            lucide.createIcons();
+        });
+
+        // Local Storage Management
+        function loadPostsFromStorage() {
+            const stored = localStorage.getItem('blogpulse_posts');
+            if (stored) {
+                try {
+                    posts = JSON.parse(stored);
+                } catch (e) {
+                    console.error("Failed to parse localStorage data", e);
+                    posts = [...DEFAULT_POSTS];
+                }
+            } else {
+                posts = [...DEFAULT_POSTS];
+                savePostsToStorage();
+            }
+        }
+
+        function savePostsToStorage() {
+            localStorage.setItem('blogpulse_posts', JSON.stringify(posts));
+        }
+
+        function resetToDefaultData() {
+            if (confirm("Reset all blog posts to default sample data? Local edits will be lost.")) {
+                posts = [...DEFAULT_POSTS];
+                savePostsToStorage();
+                renderPosts();
+                showToast("Data reset to default sample blogs!", "info");
+            }
+        }
+
+        // Render Category Filter Pills
+        function renderCategoryFilters() {
+            const container = document.getElementById('categoryFilters');
+            container.innerHTML = CATEGORIES.map(cat => {
+                const isActive = cat === activeCategory;
+                const activeClasses = isActive 
+                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30 font-semibold' 
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700/60';
+                
+                return `<button onclick="setCategory('${cat}')" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm whitespace-nowrap transition-all duration-200 ${activeClasses}">
+                    ${cat}
+                </button>`;
+            }).join('');
+        }
+
+        function setCategory(cat) {
+            activeCategory = cat;
+            renderCategoryFilters();
+            renderPosts();
+        }
+
+        // Search Handlers
+        function handleSearch() {
+            const input = document.getElementById('searchInput');
+            searchQuery = input.value.trim().toLowerCase();
+            
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (searchQuery.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            renderPosts();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            searchQuery = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            renderPosts();
+        }
+
+        // Compute Reading Time Helper
+        function calculateReadingTime(text) {
+            const wordsPerMinute = 200;
+            const words = text ? text.trim().split(/\s+/).length : 0;
+            const minutes = Math.ceil(words / wordsPerMinute);
+            return `${minutes} min read`;
+        }
+
+        // Render Posts Cards
+        function renderPosts() {
+            const grid = document.getElementById('blogGrid');
+            const emptyState = document.getElementById('emptyState');
+
+            // Filter logic (Title, Author, Excerpt, Content)
+            const filteredPosts = posts.filter(post => {
+                const matchesCategory = activeCategory === "All" || post.category === activeCategory;
+                const matchesSearch = searchQuery === "" || 
+                    post.title.toLowerCase().includes(searchQuery) ||
+                    post.author.toLowerCase().includes(searchQuery) ||
+                    (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery)) ||
+                    post.content.toLowerCase().includes(searchQuery);
+
+                return matchesCategory && matchesSearch;
+            });
+
+            // Update post count badge
+            document.getElementById('postsCount').textContent = `${filteredPosts.length} ${filteredPosts.length === 1 ? 'Post' : 'Posts'}`;
+
+            if (filteredPosts.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            grid.innerHTML = filteredPosts.map(post => {
+                const imgFallback = `https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=800&q=80`;
+                const displayImg = post.imageUrl && post.imageUrl.trim() !== "" ? post.imageUrl : imgFallback;
+                const readTime = calculateReadingTime(post.content);
+                const displayExcerpt = post.excerpt || post.content;
+
+                return `
+                <article class="bg-gray-800/80 border border-gray-700/70 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:border-gray-600 transition-all duration-300 flex flex-col group">
+                    <!-- Card Banner -->
+                    <div class="relative h-48 w-full overflow-hidden bg-gray-900">
+                        <img src="${displayImg}" alt="${escapeHtml(post.title)}" 
+                             onerror="this.onerror=null;this.src='${imgFallback}';" 
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute top-3 left-3">
+                            <span class="px-2.5 py-1 bg-gray-900/80 backdrop-blur-md text-brand-400 border border-gray-700 text-xs font-semibold rounded-lg">
+                                ${escapeHtml(post.category)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-xs text-gray-400">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                                    ${post.date || 'Recent'}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                    ${readTime}
+                                </span>
+                            </div>
+                            <h3 onclick="openReadModal('${post.id}')" class="text-lg font-bold text-white group-hover:text-brand-400 transition-colors cursor-pointer line-clamp-2 leading-snug">
+                                ${escapeHtml(post.title)}
+                            </h3>
+                            <p class="text-sm text-gray-400 line-clamp-3 leading-relaxed">
+                                ${escapeHtml(displayExcerpt)}
+                            </p>
+                        </div>
+
+                        <!-- Card Footer -->
+                        <div class="pt-4 border-t border-gray-700/60 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-brand-700 text-white text-xs font-bold flex items-center justify-center">
+                                    ${escapeHtml(post.author.charAt(0).toUpperCase())}
+                                </div>
+                                <span class="text-xs font-medium text-gray-300 truncate max-w-[120px]">${escapeHtml(post.author)}</span>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center gap-1">
+                                <button onclick="openReadModal('${post.id}')" title="Read Full" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="openEditModal('${post.id}')" title="Edit Post" class="p-2 text-gray-400 hover:text-brand-400 hover:bg-gray-700 rounded-lg transition">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="promptDelete('${post.id}')" title="Delete Post" class="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // ==================== CRUD OPERATIONAL MODALS ====================
+
+        // Open Modal for Create
+        function openCreateModal() {
+            document.getElementById('blogForm').reset();
+            document.getElementById('blogId').value = '';
+            document.getElementById('modalTitle').innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-brand-500"></i> Create New Post`;
+            document.getElementById('blogFormModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // Open Modal for Edit
+        function openEditModal(id) {
+            const post = posts.find(p => p.id === id);
+            if (!post) return;
+
+            document.getElementById('blogId').value = post.id;
+            document.getElementById('formTitle').value = post.title;
+            document.getElementById('formCategory').value = post.category;
+            document.getElementById('formAuthor').value = post.author;
+            document.getElementById('formImageUrl').value = post.imageUrl || '';
+            document.getElementById('formExcerpt').value = post.excerpt || '';
+            document.getElementById('formContent').value = post.content;
+
+            document.getElementById('modalTitle').innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-brand-500"></i> Edit Blog Post`;
+            document.getElementById('blogFormModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeFormModal() {
+            document.getElementById('blogFormModal').classList.add('hidden');
+        }
+
+        // Handle Form Submission (Create or Update)
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('blogId').value;
+            const title = document.getElementById('formTitle').value.trim();
+            const category = document.getElementById('formCategory').value;
+            const author = document.getElementById('formAuthor').value.trim();
+            const imageUrl = document.getElementById('formImageUrl').value.trim();
+            const excerpt = document.getElementById('formExcerpt').value.trim();
+            const content = document.getElementById('formContent').value.trim();
+
+            if (id) {
+                // Update existing
+                const index = posts.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    posts[index] = { ...posts[index], title, category, author, imageUrl, excerpt, content };
+                    showToast("Blog post updated successfully!", "success");
+                }
+            } else {
+                // Create new
+                const newPost = {
+                    id: Date.now().toString(),
+                    title,
+                    category,
+                    author,
+                    imageUrl,
+                    excerpt,
+                    content,
+                    date: new Date().toISOString().split('T')[0]
+                };
+                posts.unshift(newPost);
+                showToast("New article published successfully!", "success");
+            }
+
+            savePostsToStorage();
+            closeFormModal();
+            renderPosts();
+        }
+
+        // Read Detail View Modal
+        function openReadModal(id) {
+            const post = posts.find(p => p.id === id);
+            if (!post) return;
+
+            const imgFallback = `https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=800&q=80`;
+            const displayImg = post.imageUrl && post.imageUrl.trim() !== "" ? post.imageUrl : imgFallback;
+
+            document.getElementById('viewTitle').textContent = post.title;
+            document.getElementById('viewCategory').textContent = post.category;
+            document.getElementById('viewAuthor').textContent = post.author;
+            document.getElementById('viewAvatar').textContent = post.author.charAt(0).toUpperCase();
+            document.getElementById('viewDate').textContent = post.date || 'Recently Published';
+            document.getElementById('viewReadingTime').textContent = calculateReadingTime(post.content);
+            document.getElementById('viewContent').textContent = post.content;
+            
+            const imgElem = document.getElementById('viewImage');
+            imgElem.src = displayImg;
+            imgElem.onerror = () => { imgElem.src = imgFallback; };
+
+            // Wire up modal actions
+            const editBtn = document.getElementById('viewEditBtn');
+            const deleteBtn = document.getElementById('viewDeleteBtn');
+
+            editBtn.onclick = () => {
+                closeReadModal();
+                openEditModal(post.id);
+            };
+
+            deleteBtn.onclick = () => {
+                closeReadModal();
+                promptDelete(post.id);
+            };
+
+            document.getElementById('readModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeReadModal() {
+            document.getElementById('readModal').classList.add('hidden');
+        }
+
+        // Delete Confirmation Modal
+        function promptDelete(id) {
+            postToDeleteId = id;
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            confirmBtn.onclick = () => executeDelete();
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            postToDeleteId = null;
+            document.getElementById('deleteModal').classList.add('hidden');
+        }
+
+        function executeDelete() {
+            if (!postToDeleteId) return;
+
+            posts = posts.filter(p => p.id !== postToDeleteId);
+            savePostsToStorage();
+            closeDeleteModal();
+            renderPosts();
+            showToast("Article deleted permanently.", "warning");
+        }
+
+        // Helper: HTML Escaping
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // Custom Toast Notifications
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const colorMap = {
+                success: 'bg-emerald-600 text-white border-emerald-500',
+                warning: 'bg-amber-600 text-white border-amber-500',
+                info: 'bg-brand-600 text-white border-brand-500',
+                error: 'bg-red-600 text-white border-red-500'
+            };
+
+            const iconMap = {
+                success: 'check-circle-2',
+                warning: 'alert-circle',
+                info: 'info',
+                error: 'x-circle'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl ${colorMap[type] || colorMap.info} transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i data-lucide="${iconMap[type] || 'info'}" class="w-5 h-5 flex-shrink-0"></i>
+                <span class="text-sm font-medium flex-grow">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Remove after delay
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
