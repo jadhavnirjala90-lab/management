@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevPulse Blog & Tech Hub</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- NAVIGATION BAR -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="showView('feed')">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-indigo-500/30">
+          P
+        </div>
+        <span class="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+          DevPulse
+        </span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-3">
+        <button onclick="showView('create')" class="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-all flex items-center space-x-2">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Write Post</span>
+        </button>
+
+        <div id="auth-buttons">
+          <button onclick="openAuthModal()" class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all shadow-md shadow-indigo-600/20">
+            Sign In / Up
+          </button>
+        </div>
+
+        <div id="user-profile" class="hidden flex items-center space-x-3">
+          <span id="user-email" class="text-xs text-slate-400 max-w-[150px] truncate"></span>
+          <button onclick="handleLogout()" class="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-all" title="Logout">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- 1. FEED VIEW -->
+    <section id="view-feed" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
+        <div class="relative flex-grow max-w-md">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="search-input" onkeyup="filterBlogs()" placeholder="Search titles, content, or tags..." class="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-slate-200 placeholder-slate-500">
+        </div>
+        <div class="flex items-center space-x-2 overflow-x-auto pb-2 md:pb-0">
+          <button onclick="filterCategory('All')" class="category-btn active px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition-all">All</button>
+          <button onclick="filterCategory('Engineering')" class="category-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">Engineering</button>
+          <button onclick="filterCategory('Design')" class="category-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">Design</button>
+          <button onclick="filterCategory('Database')" class="category-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">Database</button>
+        </div>
+      </div>
+
+      <!-- Blog Grid -->
+      <div id="blog-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Dynamic Blog Cards Loaded Here -->
+      </div>
+    </section>
+
+    <!-- 2. DETAIL VIEW -->
+    <section id="view-detail" class="hidden max-w-3xl mx-auto space-y-8">
+      <button onclick="showView('feed')" class="inline-flex items-center space-x-2 text-sm text-slate-400 hover:text-white transition-all">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span>Back to feed</span>
+      </button>
+
+      <article class="bg-slate-800/40 border border-slate-800 rounded-2xl p-6 md:p-8 space-y-6">
+        <div class="space-y-4">
+          <div class="flex items-center space-x-2">
+            <span id="detail-category" class="px-2.5 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-bold rounded-full border border-indigo-500/20"></span>
+            <span class="text-slate-500 text-xs">•</span>
+            <span id="detail-date" class="text-slate-400 text-xs"></span>
+          </div>
+          <h1 id="detail-title" class="text-2xl md:text-4xl font-extrabold text-white leading-tight"></h1>
+          <div class="flex items-center space-x-3 pt-2 border-t border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs text-indigo-400" id="detail-author-avatar"></div>
+            <div>
+              <p id="detail-author" class="text-sm font-semibold text-slate-200"></p>
+              <p class="text-xs text-slate-500">Author</p>
+            </div>
+          </div>
+        </div>
+
+        <img id="detail-image" src="" alt="Cover" class="w-full h-64 md:h-80 object-cover rounded-xl border border-slate-700/50">
+
+        <div id="detail-content" class="text-slate-300 leading-relaxed text-base space-y-4 whitespace-pre-line"></div>
+      </article>
+
+      <!-- Comment Section -->
+      <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <i data-lucide="message-square" class="w-5 h-5 text-indigo-400"></i>
+          <span>Comments</span>
+        </h3>
+        <div id="comments-list" class="space-y-3"></div>
+        <div class="flex gap-2">
+          <input type="text" id="comment-input" placeholder="Add a comment..." class="flex-grow px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white">
+          <button onclick="addComment()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-all">Post</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. CREATE BLOG VIEW -->
+    <section id="view-create" class="hidden max-w-2xl mx-auto">
+      <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-6 md:p-8 space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <h2 class="text-xl font-bold text-white">Create New Post</h2>
+          <p class="text-slate-400 text-xs mt-1">Publish tech news, tutorials, or engineering thoughts.</p>
+        </div>
+        
+        <form id="create-post-form" onsubmit="handleCreatePost(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Title</label>
+            <input type="text" id="post-title" required placeholder="e.g. Building Scalable Web Apps with Supabase" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Category</label>
+              <select id="post-category" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                <option value="Engineering">Engineering</option>
+                <option value="Design">Design</option>
+                <option value="Database">Database</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Cover Image URL</label>
+              <input type="url" id="post-image" placeholder="https://images.unsplash.com/..." class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Content</label>
+            <textarea id="post-content" rows="8" required placeholder="Write your full story here..." class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+          </div>
+
+          <div class="flex justify-end space-x-3 pt-4">
+            <button type="button" onclick="showView('feed')" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-all">Cancel</button>
+            <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-indigo-600/20">Publish Post</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- AUTH MODAL -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 space-y-6 shadow-2xl relative">
+      <button onclick="closeAuthModal()" class="absolute right-4 top-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="text-center">
+        <h3 id="auth-title" class="text-xl font-bold text-white">Sign In to DevPulse</h3>
+        <p class="text-xs text-slate-400 mt-1">Enter credentials to authenticate with Supabase</p>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+          <input type="email" id="auth-email" required placeholder="name@example.com" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+          <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <button type="submit" id="auth-submit-btn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-indigo-600/20">
+          Sign In
+        </button>
+      </form>
+
+      <div class="text-center pt-2 border-t border-slate-800">
+        <button type="button" id="auth-toggle-btn" onclick="toggleAuthMode()" class="text-xs text-indigo-400 hover:underline">
+          Don't have an account? Sign Up
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // SUPABASE & STATE INITIALIZATION
+    // -------------------------------------------------------------
+    const SUPABASE_URL = "https://YOUR_SUPABASE_PROJECT_ID.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    
+    // Initialize Supabase client safely if keys exist
+    let supabase = null;
+    if (SUPABASE_URL !== "https://YOUR_SUPABASE_PROJECT_ID.supabase.co") {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    // Local state fallback for previewing UI
+    let currentAuthMode = 'signin'; // 'signin' or 'signup'
+    let currentUser = null;
+    let currentBlogId = null;
+
+    let mockBlogs = [
+      {
+        id: "1",
+        title: "Connecting Web Applications to Supabase",
+        category: "Database",
+        author: "Alex Rivers",
+        created_at: "2026-03-28",
+        image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
+        content: "Supabase offers an instant PostgreSQL database paired with real-time subscriptions, user authentication, and storage capabilities.\n\nTo integrate it, initialize the Supabase client using your Project URL and Anon key. Secure client access using Row Level Security (RLS) policies to protect user records.",
+        comments: ["Super clear explanation!", "RLS policies are essential."]
+      },
+      {
+        id: "2",
+        title: "Architecting Modern Full-Stack Workflows",
+        category: "Engineering",
+        author: "Sarah Chen",
+        created_at: "2026-03-25",
+        image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
+        content: "Designing scalable frontend architectures requires decoupling data fetch layers from layout rendering. Decoupled state simplifies unit testing and components remain clean.",
+        comments: ["Love this approach."]
+      }
+    ];
+
+    // Initialize UI Icons
+    lucide.createIcons();
+
+    // -------------------------------------------------------------
+    // NAVIGATION & VIEW SWITCHING
+    // -------------------------------------------------------------
+    function showView(viewName) {
+      document.getElementById('view-feed').classList.add('hidden');
+      document.getElementById('view-detail').classList.add('hidden');
+      document.getElementById('view-create').classList.add('hidden');
+
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+      window.scrollTo(0, 0);
+
+      if (viewName === 'feed') renderBlogs(mockBlogs);
+    }
+
+    // -------------------------------------------------------------
+    // BLOG FEED RENDERING & FILTERING
+    // -------------------------------------------------------------
+    function renderBlogs(blogsToRender) {
+      const grid = document.getElementById('blog-grid');
+      grid.innerHTML = '';
+
+      if (blogsToRender.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500">No blog posts found.</div>`;
+        return;
+      }
+
+      blogsToRender.forEach(blog => {
+        const card = document.createElement('article');
+        card.className = "bg-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700 transition-all cursor-pointer flex flex-col";
+        card.onclick = () => openBlogDetail(blog.id);
+
+        card.innerHTML = `
+          <img src="${blog.image}" alt="${blog.title}" class="w-full h-48 object-cover">
+          <div class="p-5 flex flex-col flex-grow justify-between space-y-4">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs text-slate-400">
+                <span class="px-2.5 py-0.5 bg-indigo-500/10 text-indigo-400 font-semibold rounded-full border border-indigo-500/20">${blog.category}</span>
+                <span>${blog.created_at}</span>
+              </div>
+              <h3 class="font-bold text-lg text-white group-hover:text-indigo-400 transition-colors line-clamp-2">${blog.title}</h3>
+              <p class="text-slate-400 text-sm line-clamp-2">${blog.content}</p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <span class="font-medium text-slate-300">By ${blog.author}</span>
+              <span class="flex items-center space-x-1">
+                <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                <span>${blog.comments ? blog.comments.length : 0}</span>
+              </span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function filterBlogs() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const filtered = mockBlogs.filter(b => 
+        b.title.toLowerCase().includes(query) || 
+        b.content.toLowerCase().includes(query) ||
+        b.category.toLowerCase().includes(query)
+      );
+      renderBlogs(filtered);
+    }
+
+    function filterCategory(cat) {
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        if(btn.innerText === cat) {
+          btn.className = "category-btn active px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition-all";
+        } else {
+          btn.className = "category-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all";
+        }
+      });
+
+      if (cat === 'All') {
+        renderBlogs(mockBlogs);
+      } else {
+        renderBlogs(mockBlogs.filter(b => b.category === cat));
+      }
+    }
+
+    // -------------------------------------------------------------
+    // BLOG DETAIL VIEW & COMMENTS
+    // -------------------------------------------------------------
+    function openBlogDetail(id) {
+      const blog = mockBlogs.find(b => b.id === id);
+      if (!blog) return;
+
+      currentBlogId = id;
+      document.getElementById('detail-title').innerText = blog.title;
+      document.getElementById('detail-category').innerText = blog.category;
+      document.getElementById('detail-date').innerText = blog.created_at;
+      document.getElementById('detail-author').innerText = blog.author;
+      document.getElementById('detail-author-avatar').innerText = blog.author.charAt(0);
+      document.getElementById('detail-image').src = blog.image;
+      document.getElementById('detail-content').innerText = blog.content;
+
+      renderComments(blog.comments || []);
+      showView('detail');
+    }
+
+    function renderComments(comments) {
+      const container = document.getElementById('comments-list');
+      container.innerHTML = '';
+      if (comments.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500">No comments yet. Start the conversation!</p>`;
+        return;
+      }
+      comments.forEach(c => {
+        const item = document.createElement('div');
+        item.className = "p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300";
+        item.innerText = c;
+        container.appendChild(item);
+      });
+    }
+
+    function addComment() {
+      const input = document.getElementById('comment-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const blog = mockBlogs.find(b => b.id === currentBlogId);
+      if (blog) {
+        if (!blog.comments) blog.comments = [];
+        blog.comments.push(val);
+        renderComments(blog.comments);
+        input.value = '';
+      }
+    }
+
+    // -------------------------------------------------------------
+    // POST CREATION
+    // -------------------------------------------------------------
+    function handleCreatePost(e) {
+      e.preventDefault();
+      const title = document.getElementById('post-title').value;
+      const category = document.getElementById('post-category').value;
+      const image = document.getElementById('post-image').value || "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80";
+      const content = document.getElementById('post-content').value;
+
+      const newPost = {
+        id: String(Date.now()),
+        title,
+        category,
+        author: currentUser ? currentUser.email.split('@')[0] : "Anonymous Developer",
+        created_at: new Date().toISOString().split('T')[0],
+        image,
+        content,
+        comments: []
+      };
+
+      mockBlogs.unshift(newPost);
+      document.getElementById('create-post-form').reset();
+      showView('feed');
+    }
+
+    // -------------------------------------------------------------
+    // AUTHENTICATION MODAL & LOGIC
+    // -------------------------------------------------------------
+    function openAuthModal() {
+      document.getElementById('auth-modal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+    }
+
+    function toggleAuthMode() {
+      currentAuthMode = currentAuthMode === 'signin' ? 'signup' : 'signin';
+      document.getElementById('auth-title').innerText = currentAuthMode === 'signin' ? 'Sign In to DevPulse' : 'Create an Account';
+      document.getElementById('auth-submit-btn').innerText = currentAuthMode === 'signin' ? 'Sign In' : 'Sign Up';
+      document.getElementById('auth-toggle-btn').innerText = currentAuthMode === 'signin' ? "Don't have an account? Sign Up" : "Already have an account? Sign In";
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+
+      if (supabase) {
+        let result;
+        if (currentAuthMode === 'signup') {
+          result = await supabase.auth.signUp({ email, password });
+        } else {
+          result = await supabase.auth.signInWithPassword({ email, password });
+        }
+
+        if (result.error) {
+          alert(result.error.message);
+          return;
+        }
+
+        currentUser = result.data.user;
+      } else {
+        // Local simulation fallback
+        currentUser = { email };
+      }
+
+      updateAuthUI();
+      closeAuthModal();
+    }
+
+    function handleLogout() {
+      if (supabase) supabase.auth.signOut();
+      currentUser = null;
+      updateAuthUI();
+    }
+
+    function updateAuthUI() {
+      if (currentUser) {
+        document.getElementById('auth-buttons').classList.add('hidden');
+        document.getElementById('user-profile').classList.remove('hidden');
+        document.getElementById('user-email').innerText = currentUser.email;
+      } else {
+        document.getElementById('auth-buttons').classList.remove('hidden');
+        document.getElementById('user-profile').classList.add('hidden');
+      }
+    }
+
+    // Initial Load
+    showView('feed');
+  </script>
+</body>
+</html>
